@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识库工厂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        neutral: '#86909C',
+                        'neutral-light': '#F2F3F5',
+                        'neutral-dark': '#4E5969'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .content-container {
+            flex: 1;
+            max-width: 1440px;
+            display: flex;
+            flex-direction: column;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .iframe-wrapper {
+            flex: 1;
+            min-height: calc(100vh - 8rem); /* 更精确的高度计算 */
+        }
+        
+        /* 侧边栏管理 */
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+            position: fixed;
+            z-index: 100;
+            height: 100vh;
+            top: 0;
+            left: 0;
+            width: 80%;
+            max-width: 300px;
+            overflow-y: auto;
+            background-color: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+        .sidebar-visible {
+            transform: translateX(0);
+        }
+        
+        /* 遮罩层 */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 90;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .overlay-visible {
+            display: block;
+        }
+        
+        /* 顶部导航栏 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: white;
+        }
+        
+        /* 导航菜单项优化 */
+        .menu-item {
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        /* 内容区优化 */
+        .content-area {
+            overflow-x: hidden;
+        }
+        
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .menu-item-active {
+                @apply bg-primary/10 text-primary border-l-4 border-primary;
+            }
+            .menu-item-hover {
+                @apply hover:bg-primary/5 transition-all duration-200;
+            }
+            .card-shadow {
+                @apply shadow-lg hover:shadow-xl transition-shadow duration-300;
+            }
+            .slide-in {
+                animation: slideIn 0.3s ease forwards;
+            }
+            .slide-out {
+                animation: slideOut 0.3s ease forwards;
+            }
+            @keyframes slideIn {
+                from { transform: translateX(-100%); }
+                to { transform: translateX(0); }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); }
+                to { transform: translateX(-100%); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-neutral-dark">
+    <!-- 顶部导航栏 -->
+    <div class="header">
+        <div class="flex items-center">
+            <button id="menu-toggle" class="mr-3 text-neutral-dark hover:text-primary">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <h1 class="text-xl font-bold text-primary flex items-center">
+                <span>知识库工厂</span>
+            </h1>
+        </div>
+    </div>
+    
+    <!-- 侧边菜单 -->
+    <div id="sidebar" class="sidebar sidebar-hidden card-shadow">
+        <div class="p-4 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-primary flex items-center">
+                <i class="fa-solid fa-comments mr-3"></i>
+                <span>知识库工厂</span>
+            </h1>
+        </div>
+        <div class="menu p-2">
+            <a href="qa-generation-chunk.html" target="content-iframe" class="menu-item flex items-center px-4 py-3 rounded-lg mb-1 menu-item-hover menu-item-active">
+                <i class="fa-solid fa-question icon w-6 text-center"></i>
+                <span>问答生成(按块)</span>
+            </a>
+            <a href="qa-generation-page.html" target="content-iframe" class="menu-item flex items-center px-4 py-3 rounded-lg mb-1 menu-item-hover menu-item-active">
+                <i class="fa-solid fa-question icon w-6 text-center"></i>
+                <span>问答生成(按页)</span>
+            </a>
+            <a href="session-analysis.html" target="content-iframe" class="menu-item flex items-center px-4 py-3 rounded-lg mb-1 menu-item-hover">
+                <i class="fa-solid fa-file-text icon w-6 text-center"></i>
+                <span>会话分析</span>
+            </a>    
+        </div>
+    </div>
+    
+    <!-- 遮罩层 -->
+    <div id="overlay" class="overlay"></div>
+
+    <!-- 内容容器 -->
+    <div class="content-container container mx-auto px-4 pt-4">
+        <div class="flex flex-col lg:flex-row gap-4 h-full">
+            <!-- 内容区域 -->
+            <div class="flex-1 bg-white rounded-xl card-shadow overflow-hidden iframe-wrapper content-area">
+                <iframe id="content-iframe" name="content-iframe" src="qa-generation-page.html" class="w-full h-full border-none"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="py-4 text-center text-sm text-neutral mt-4">
+        <div class="container mx-auto px-4">
+            <p>© 2025 知识库工厂 | 知识库辅助生成工具</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取当前 URL 中的 token 参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            // 如果 token 存在，将其添加到链接的 href 中
+            if (token) {
+                const link = document.querySelector('a[href="qa-generation.html"]');
+                if (link) {
+                    const currentHref = link.getAttribute('href');
+                    const newHref = `${currentHref}?token=${token}`;
+                    link.setAttribute('href', newHref);
+                    
+                    // 直接设置iframe的src属性，确保立即加载问答生成页面
+                    document.getElementById('content-iframe').src = newHref;
+                }
+                const link2 = document.querySelector('a[href="session-analysis.html"]');
+                if (link2) {
+                    const currentHref = link2.getAttribute('href');
+                    const newHref = `${currentHref}?token=${token}`;
+                    link2.setAttribute('href', newHref);
+                }
+            }
+        });
+        
+        // 菜单切换效果
+        document.querySelectorAll('.menu a').forEach(item => {
+            item.addEventListener('click', function() {
+                // 移除所有菜单项的 active 类
+                document.querySelectorAll('.menu a').forEach(a => a.classList.remove('menu-item-active'));
+                // 添加 active 类到当前点击的菜单项
+                this.classList.add('menu-item-active');
+                
+                // 点击菜单项后关闭侧边栏
+                if (sidebar.classList.contains('sidebar-visible')) {
+                    toggleSidebar();
+                }
+            });
+        });
+        
+        // 侧边栏切换功能
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('sidebar-hidden');
+            sidebar.classList.toggle('sidebar-visible');
+            overlay.classList.toggle('overlay-visible');
+            
+            // 侧边栏可见时隐藏汉堡菜单，否则显示
+            menuToggle.classList.toggle('hidden');
+            overlay.classList.toggle('overlay-visible');
+            
+            // 阻止背景滚动
+            if (sidebar.classList.contains('sidebar-visible')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+        
+        menuToggle.addEventListener('click', toggleSidebar);
+        overlay.addEventListener('click', toggleSidebar);
+        
+        // 调整iframe高度，适应内容
+        function resizeIframe() {
+            const iframe = document.getElementById('content-iframe');
+            if (iframe) {
+                try {
+                    const contentHeight = iframe.contentWindow.document.body.scrollHeight;
+                    const minHeight = Math.max(contentHeight, window.innerHeight * 0.8);
+                    iframe.style.height = minHeight + 'px';
+                } catch (e) {
+                    iframe.style.height = 'calc(100vh - 8rem)';
+                }
+            }
+        }
+        
+        // 初始调整
+        window.addEventListener('load', resizeIframe);
+        
+        // 窗口大小变化时调整
+        window.addEventListener('resize', resizeIframe);
+        
+        // iframe内容加载完成时调整
+        document.getElementById('content-iframe').addEventListener('load', resizeIframe);
+        
+        // 优化触摸体验
+        document.querySelectorAll('a').forEach(link => {
+            link.addEventListener('touchstart', function() {
+                this.classList.add('bg-primary/5');
+            });
+            link.addEventListener('touchend', function() {
+                setTimeout(() => {
+                    this.classList.remove('bg-primary/5');
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>

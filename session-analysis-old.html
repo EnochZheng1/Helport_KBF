@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <!-- 配置 Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#2563eb',
+                        neutral: '#f3f4f6',
+                        accent: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .shadow-hover {
+                transition: all 0.3s ease;
+            }
+            .shadow-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            .select-wrapper {
+                position: relative;
+            }
+            .select-wrapper::after {
+                content: "\f078";
+                font-family: "Font Awesome 6 Free";
+                font-weight: 900;
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                color: #6b7280;
+            }
+            .date-input {
+                @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-lg; /* 增大字体 */
+                height: 50px; /* 增大高度 */
+            }
+            .table-header {
+                @apply px-6 py-4 text-left text-lg font-bold text-white uppercase tracking-wider bg-primary sticky top-0; /* 增大字体，设置为黑粗体，固定标题 */
+            }
+            .table-cell {
+                @apply px-6 py-4 whitespace-normal break-words;
+            }
+            .session-link {
+                @apply text-primary hover:text-secondary underline;
+            }
+            .input-error {
+                @apply border-danger ring-1 ring-danger;
+            }
+            .error-message {
+                @apply text-danger text-sm mt-1 flex items-center;
+            }
+            .status-indicator {
+                @apply transition-all duration-500 ease-in-out;
+            }
+            /* 使表格出现滚动条 */
+            #result-table-container {
+                max-height: 400px; /* 设置最大高度 */
+                overflow-y: auto; /* 垂直滚动条 */
+            }
+            /* 页面高度自适应 */
+            body {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            #main-content {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 顶部卡片 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 transform transition-all duration-300 hover:shadow-lg">
+            <form id="analysis-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- 开始时间 -->
+                    <div class="space-y-2">
+                        <label for="start-time" class="block text-sm font-medium text-gray-700">开始时间</label>
+                        <input type="datetime-local" id="start-time" value="2025-01-01T00:00" 
+                               class="date-input">
+                    </div>
+                    
+                    <!-- 结束时间 -->
+                    <div class="space-y-2">
+                        <label for="end-time" class="block text-sm font-medium text-gray-700">结束时间</label>
+                        <input type="datetime-local" id="end-time" value="2025-12-31T23:59" 
+                               class="date-input">
+                    </div>
+                    
+                    <!-- client_id -->
+                    <div class="space-y-2">
+                        <label for="client-id" class="block text-sm font-medium text-gray-700">租户选择</label>
+                        <div class="select-wrapper">
+                            <select id="client-id" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请选择Client ID --</option>
+                                <!-- Client ID 选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 会话数量 -->
+                    <div class="space-y-2">
+                        <label for="session-count" class="block text-sm font-medium text-gray-700">会话数量</label>
+                        <input type="number" id="session-count" value="5" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                </div>
+                
+                <!-- 业务和产品选择 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- 业务选择 -->
+                    <div class="space-y-2">
+                        <label for="business-select" class="block text-sm font-medium text-gray-700">业务选择</label>
+                        <div class="select-wrapper">
+                            <select id="business-select" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请选择业务 --</option>
+                                <!-- 业务选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 产品选择 -->
+                    <div class="space-y-2">
+                        <label for="product-select" class="block text-sm font-medium text-gray-700">产品选择</label>
+                        <div class="select-wrapper">
+                            <select id="product-select" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请先选择业务 --</option>
+                                <!-- 产品选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 按钮区域 -->
+                <div class="flex flex-wrap gap-4">
+                    <button type="button" id="analyze-button" 
+                            class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover">
+                        <i class="fa-solid fa-file-text"></i> 会话分析
+                    </button>
+                    <button type="button" id="export-csv-button" 
+                            class="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-300 flex items-center gap-2 shadow-hover">
+                        <i class="fa-solid fa-file-csv"></i> 导出为 CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 状态区域 -->
+        <div id="status" class="bg-neutral p-4 rounded-lg border border-gray-200 mb-6 flex items-center">
+            <i class="fa-solid fa-clock-o mr-3 text-gray-500"></i>
+            <span>等待分析...</span>
+        </div>
+        
+        <!-- 结果表格 -->
+        <div id="result-table-container" class="bg-white rounded-xl shadow-md p-6 mb-6 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="result-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header w-1/9">序号</th> <!-- 新增序号列 -->
+                            <th class="table-header w-1/9">会话地址</th>
+                            <th class="table-header w-2/9">客户语句(问题)</th>
+                            <th class="table-header w-2/9">标准问题</th>
+                            <th class="table-header w-1/9">是否新问题</th>
+                            <th class="table-header w-2/9">坐席语句(答案)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <!-- 数据将由JavaScript动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 无数据消息 -->
+        <div id="no-data-message" class="hidden text-danger mt-4 flex items-center">
+            <i class="fa-solid fa-exclamation-circle mr-2"></i>
+            <span>没有数据可供导出。</span>
+        </div>
+    </div>
+
+    <script>
+        // 存储业务和产品数据
+        let businessData = [];
+        let productData = [];
+        let clientIdData = [];
+
+        // 页面加载完成后初始化
+        document.addEventListener("DOMContentLoaded", () => {
+            // 绑定事件处理函数
+            document.getElementById("business-select").addEventListener("change", onBusinessSelectChange);
+            document.getElementById("analyze-button").addEventListener("click", analyzeSessions);
+            document.getElementById("export-csv-button").addEventListener("click", exportToCSV);
+            
+            // 初始化业务数据和Client ID数据
+            fetchBusinessData();
+            fetchClientIds();
+        });
+        
+        // 获取 Client ID 数据
+        function fetchClientIds() {
+            const statusDiv = document.getElementById("status");
+            statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-3 text-primary"></i><span>正在获取Client ID列表...</span>';
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            // 直接调用API获取Client ID数据
+            fetch('/user/client_id',
+               {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-token": token
+                    }
+               })
+               .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+               .then(data => {
+                    clientIdData = data;
+                    renderClientIdSelect();
+                    // 更新状态
+                    statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-3 text-accent"></i><span>Client ID列表已加载</span>';
+                })
+               .catch(error => {
+                    console.error('Error fetching client IDs:', error);
+                    statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>获取Client ID失败: ${error.message}</span>`;
+                });
+        }
+        
+        // 渲染Client ID选择框
+        function renderClientIdSelect() {
+            const clientIdSelect = document.getElementById("client-id");
+            
+            // 清空现有选项
+            clientIdSelect.innerHTML = '<option value="">-- 请选择租户 --</option>';
+            
+            // 添加Client ID选项
+            clientIdData.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = `${client.name} (${client.id})`;
+                clientIdSelect.appendChild(option);
+            });
+
+            // 默认选择第一个有效选项（跳过占位符）
+            if (clientIdSelect.options.length > 1) {
+                clientIdSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+        }
+        
+        // 获取业务数据
+        function fetchBusinessData() {
+            const statusDiv = document.getElementById("status");
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-3 text-primary"></i><span>正在获取业务列表...</span>';
+            
+            // 直接调用API获取业务数据
+            fetch('/user/biz/product',
+             {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-token": token
+                }
+             })
+             .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                businessData = data;
+                renderBusinessSelect();
+                // 更新状态
+                statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-3 text-accent"></i><span>业务列表已加载</span>';
+            })
+            .catch(error => {
+                console.error('Error fetching business data:', error);
+                statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>获取业务数据失败: ${error.message}</span>`;
+            });
+        }
+        
+        // 渲染业务选择下拉框
+        function renderBusinessSelect() {
+            const businessSelect = document.getElementById("business-select");
+            
+            // 清空现有选项
+            businessSelect.innerHTML = '<option value="">-- 请选择业务 --</option>';
+            
+            // 添加业务选项
+            businessData.forEach(business => {
+                productData = business.products;
+                const option = document.createElement('option');
+                option.value = business.businessId;
+                option.textContent = `${business.businessName} (${business.businessId})`;
+                businessSelect.appendChild(option);
+            });
+            // 默认选择第一个有效选项（跳过占位符）
+            if (businessSelect.options.length > 1) {
+                businessSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+            onBusinessSelectChange();
+        }
+        
+        // 业务选择变更事件处理
+        function onBusinessSelectChange() {
+            const productSelect = document.getElementById("product-select");
+            
+            // 清空产品选择框
+            productSelect.innerHTML = '<option value="">-- 请选择产品 --</option>';
+            
+            if (productData) {
+                // 添加产品选项
+                productData.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.name} (${product.id})`;
+                    productSelect.appendChild(option);
+                });
+            }
+            // 默认选择第一个有效选项（跳过占位符）
+            if (productSelect.options.length > 1) {
+                productSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+        }
+        
+        // 分析会话
+        function analyzeSessions() {
+            const startTime = document.getElementById("start-time").value;
+            const endTime = document.getElementById("end-time").value;
+            const clientId = document.getElementById("client-id").value;
+            const businessId = document.getElementById("business-select").value;
+            const productId = document.getElementById("product-select").value;
+            const sessionCount = document.getElementById("session-count").value;
+        
+            const statusDiv = document.getElementById("status");
+            const resultTable = document.getElementById("result-table");
+            const resultTableBody = resultTable.querySelector("tbody");
+        
+            // 验证输入
+            if (!clientId) {
+                statusDiv.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>请选择租户</span>';
+                return;
+            }
+            
+            if (!businessId) {
+                statusDiv.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>请选择业务</span>';
+                return;
+            }
+            
+            if (!productId) {
+                statusDiv.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>请选择产品</span>';
+                return;
+            }
+        
+            statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-3 text-primary"></i><span>正在分析会话...</span>';
+            resultTable.style.display = "none";
+            resultTableBody.innerHTML = ""; // 清空表格内容
+        
+            const requestBody = {
+                inputs: {
+                    product_id: productId,
+                    start_date: startTime,
+                    end_date: endTime,
+                    conversation_count: sessionCount,
+                    client_id: clientId
+                },
+                response_mode: "streaming",
+                user: clientId
+            };
+        
+            console.log("Request body:", requestBody);
+        
+            function parseOutputData(data) {
+                let results = [];
+        
+                // 遍历外层的 output 数组
+                if (data.output && Array.isArray(data.output)) {
+                    data.output.forEach(outputItem => {
+                        // 遍历内层的 output 数组
+                        if (outputItem.output && Array.isArray(outputItem.output)) {
+                            outputItem.output.forEach(outputString => {
+                                try {
+                                    // 解析 JSON 字符串
+                                    //针对Gemini需要替换掉```json*```
+                                    outputString = outputString.replace('```json','').replace('```','');
+                                    const parsedOutput = JSON.parse(outputString);
+                                    console.log('parsedOutput:', parsedOutput);
+        
+                                    // 检查 parsedOutput 是否包含 sessionUrl 和 Intents
+                                    if (parsedOutput.sessionUuid && parsedOutput.Intents && Array.isArray(parsedOutput.Intents)) {
+                                        // 遍历 Intents 数组
+                                        parsedOutput.Intents.forEach(intent => {
+                                            results.push({
+                                                sessionUuid: parsedOutput.sessionUuid,
+                                                customerSentence: intent.customerSentence || "N/A",
+                                                standardQuestion: intent.standardQuestion || "N/A",
+                                                newIssue: intent.newIssue ? "是" : "否",
+                                                agentSentence: intent.agentSentence || "N/A",
+                                            });
+                                        });
+                                    } else {
+                                        console.error("Invalid parsedOutput structure:", parsedOutput);
+                                    }
+                                } catch (error) {
+                                    console.error("Error parsing JSON string:", error);
+                                }
+                            });
+                        }
+                    });
+                }
+        
+                return results;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+        
+            // 使用原有的API路径
+            fetch(`api/session`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-token": token
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(jsonData => {
+                console.log('Received JSON:', jsonData);
+                // 处理实际数据的逻辑保持不变
+                dataArray = jsonData.split('\n\n');
+                // 提取结果
+                let results = [];
+                let error = "";
+                dataArray.forEach(data => {
+                    if (data && data != "event: ping") {
+                        dify_obj = JSON.parse(data.replace('data:', ""));
+                        console.log('Received Each data:', dify_obj);
+                        // 更新状态显示
+                        if (dify_obj.event) {
+                            statusDiv.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-3 text-primary"></i><span>状态: ${dify_obj.event}</span>`;
+                        }      
+                        if (dify_obj.event === "workflow_finished" && dify_obj.data && dify_obj.data.outputs) {
+                            const outputArray = dify_obj.data.outputs;
+                            console.log("Output array:", outputArray);
+                            results = parseOutputData(outputArray);
+                            if (dify_obj.data.error){
+                                error = dify_obj.data.error;
+                            }
+                            console.log("results:", results);
+                        }
+                    }
+                });
+        
+                // 展示结果
+                if (results.length > 0) {
+                    statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-3 text-accent"></i><span>分析完成！</span>';
+                    resultTable.style.display = "table";
+        
+                    results.forEach((result, index) => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td class="table-cell">${index + 1}</td> <!-- 新增序号单元格 -->
+                            <td class="table-cell"><a href="https://helport.ai/assistant-console/session/${result.sessionUuid}" target="_blank" class="session-link">会话地址</a></td>
+                            <td class="table-cell">${result.customerSentence}</td>
+                            <td class="table-cell">${result.standardQuestion}</td>
+                            <td class="table-cell">${result.newIssue}</td>
+                            <td class="table-cell">${result.agentSentence}</td>
+                        `;
+                        resultTableBody.appendChild(row);
+                    });
+                } else {
+                    if (error){
+                        statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>${error}</span>`;
+                    }
+                    else{
+                        statusDiv.innerHTML = '<i class="fa-solid fa-exclamation-circle mr-3 text-warning"></i><span>没有找到匹配的会话数据</span>';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Fetch error:', err);
+                statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>发生错误: ${err.message}</span>`;
+            });
+        }
+        
+        // 导出为CSV
+        function exportToCSV() {
+            const resultTable = document.getElementById("result-table");
+            const rows = resultTable.querySelectorAll("tr");
+            const csvContent = [];
+        
+            if (rows.length <= 1) {
+                document.getElementById("no-data-message").classList.remove("hidden");
+                setTimeout(() => {
+                    document.getElementById("no-data-message").classList.add("hidden");
+                }, 3000);
+                return;
+            }
+        
+            rows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll("td, th")); // 将 NodeList 转换为数组
+                const rowContent = cells.map(cell => {
+                    // 检查单元格中是否包含 <a> 标签
+                    const link = cell.querySelector("a");
+                    let cellText;
+        
+                    if (link) {
+                        // 如果存在 <a> 标签，导出其 href 属性
+                        cellText = link.getAttribute("href");
+                    } else {
+                        // 否则，导出单元格的文本内容
+                        cellText = cell.textContent;
+                    }
+        
+                    // 转义双引号
+                    const escapedText = cellText.replace(/"/g, '""');
+                    return `"${escapedText}"`;
+                }).join(",");
+                csvContent.push(rowContent);
+            });
+        
+            const csvString = csvContent.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { // feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "session_analysis.csv");
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+</body>
+</html>    

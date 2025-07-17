@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图表生成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@2.1.0/marked.min.js"></script>
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#FF7D00',
+                        neutral: '#F2F3F5',
+                        'neutral-dark': '#4E5969',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply ring-2 ring-primary/30 border-primary;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium rounded-lg px-4 py-2 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+            }
+            .btn-secondary {
+                @apply bg-white border border-gray-300 hover:bg-gray-50 text-neutral-dark font-medium rounded-lg px-4 py-2 transition-all duration-300 shadow-sm hover:shadow-md;
+            }
+            .card {
+                @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6;
+            }
+            .input-error {
+                @apply border-danger ring-1 ring-danger;
+            }
+            label {
+                @apply text-gray-700 font-medium mb-1.5 block;
+            }
+            input,
+            select {
+                @apply w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:form-input-focus transition-all duration-200;
+            }
+            .button-group {
+                @apply flex justify-center gap-3 mb-6;
+            }
+            /* 新增：增加图表按钮与输入项之间的间距 */
+           .chart-buttons-container {
+                @apply mt-6;
+            }
+            /* 新增：增加状态与分析结果之间的间距 */
+           .status-thought-container {
+                @apply mt-8;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-inter min-h-screen">
+
+    <main class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- 表单卡片 -->
+        <div class="card mb-8">
+            <!-- 保持原有表单结构，仅美化样式 -->
+            <form id="chart-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="form-group">
+                        <label for="table-name">表名称</label>
+                        <input type="text" id="table-name" placeholder="请输入表名称">
+                    </div>
+                    <div class="form-group">
+                        <label for="csv-file-upload">上传 CSV 文件</label>
+                        <div class="relative">
+                            <input type="file" id="csv-file-upload" name="csv-file-upload" accept=".csv"
+                                class="hidden" onchange="document.getElementById('file-name').textContent = this.files[0]?.name || '未选择文件'">
+                            <label for="csv-file-upload"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2.5 cursor-pointer flex items-center justify-between">
+                                <span id="file-name" class="text-sm text-gray-500 truncate">未选择文件</span>
+                                <i class="fa fa-file-text-o text-gray-400"></i>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group flex justify-end">
+                        <button type="button" id="upload-button" class="btn-primary flex items-center self-end">
+                            <i class="fa fa-upload mr-2"></i> 上传
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="form-group">
+                        <label for="chart-table-desc">表结构描述</label>
+                        <input type="text" id="chart-table-desc" placeholder="请输入表结构描述">
+                    </div>
+                    <div class="form-group">
+                        <label for="chart-type-input">图表提示词</label>
+                        <input type="text" id="chart-type-input" placeholder="请输入图表提示词，如：日均业绩趋势">
+                    </div>
+                    <div class="form-group">
+                        <label for="x-axis-select">X 轴列名</label>
+                        <select id="x-axis-select">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="y-axis-select">Y 轴列名</label>
+                        <select id="y-axis-select">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+            <!-- 新增：将图表按钮包裹在一个div中，并应用间距类 -->
+            <div class="chart-buttons-container">
+                <div class="button-group">
+                    <button class="chart-type-button bg-primary text-white font-medium rounded-lg px-4 py-2 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 flex items-center"
+                        data-chart-type="line">
+                        <i class="fa fa-line-chart mr-2"></i>
+                    </button>
+                    <button class="chart-type-button bg-white border border-gray-300 text-neutral-dark font-medium rounded-lg px-4 py-2 transition-all duration-300 shadow-sm hover:shadow-md flex items-center"
+                        data-chart-type="bar">
+                        <i class="fa fa-bar-chart mr-2"></i>
+                    </button>
+                    <button class="chart-type-button bg-white border border-gray-300 text-neutral-dark font-medium rounded-lg px-4 py-2 transition-all duration-300 shadow-sm hover:shadow-md flex items-center"
+                        data-chart-type="pie">
+                        <i class="fa fa-pie-chart mr-2"></i>
+                    </button>
+                    <button type="button" id="generate-chart-button" class="btn-primary flex items-center">
+                        <i class="fa fa-chart-line mr-2"></i> 生成图表
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="status" class="card bg-gray-50 border border-gray-200 transition-all duration-500 ease-in-out">
+            <h3 class="font-medium text-gray-700 mb-2 flex items-center">
+                <i class="fa fa-info-circle text-primary mr-2"></i><p class="text-gray-600">等待操作...</p>
+            </h3>
+        </div>
+        <!-- 新增：将状态和分析结果包裹在一个div中，并应用间距类 -->
+        <div class="status-thought-container">
+            <!-- 图表容器 -->
+            <div id="chart-container" class="hidden transition-all duration-500 ease-in-out">
+                <canvas id="chart" class="w-full h-80"></canvas>
+            </div>
+            <!-- 状态和分析结果 -->
+            <div id="thought" class="card bg-gray-50 border border-gray-200 transition-all duration-500 ease-in-out">
+                <h3 class="font-medium text-gray-700 mb-2 flex items-center">
+                    <i class="fa fa-lightbulb-o text-accent mr-2"></i> <p class="text-gray-600">请上传数据并生成图表</p>
+                </h3>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let chart; // 用于存储图表实例
+        let csvData = []; // 用于存储 CSV 数据
+        let columns = []; // 用于存储列名
+        
+        // 图表类型按钮事件
+        document.querySelectorAll('.chart-type-button').forEach(button => {
+            button.addEventListener('click', function () {
+                // 移除所有按钮的激活状态样式
+                document.querySelectorAll('.chart-type-button').forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-white');
+                    btn.classList.add('bg-white', 'text-neutral-dark');
+                });
+        
+                // 为当前按钮添加激活状态样式
+                this.classList.remove('bg-white', 'text-neutral-dark');
+                this.classList.add('bg-primary', 'text-white');
+        
+                // 获取选中的图表类型并更新图表
+                const selectedType = this.getAttribute('data-chart-type');
+                updateChart(selectedType);
+            });
+        });
+        
+        // 上传按钮事件
+        document.getElementById("upload-button").addEventListener("click", async () => {
+            const statusDiv = document.getElementById('status').querySelector('p');
+            const tableName = document.getElementById('table-name').value.trim();
+            const fileInput = document.getElementById('csv-file-upload');
+            
+            // 验证表名称
+            if (!tableName) {
+                setStatus('请输入表名称', 'danger');
+                highlightInput('table-name');
+                return;
+            }
+            
+            // 验证是否选择了文件
+            if (!fileInput.files.length) {
+                setStatus('请选择一个 CSV 文件', 'danger');
+                highlightInput('csv-file-upload');
+                return;
+            }
+            
+            // 验证文件类型
+            const file = fileInput.files[0];
+            if (!file.name.endsWith('.csv')) {
+                setStatus('请选择 CSV 格式的文件', 'danger');
+                highlightInput('csv-file-upload');
+                return;
+            }
+            
+            setStatus('正在上传 CSV...', 'primary');
+            
+            try {
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                // 上传文件并获取 upload_file_id
+                const uploadFileId = await uploadFile(file, token);
+                
+                if (!uploadFileId) {
+                    setStatus('文件上传失败', 'danger');
+                    return;
+                }
+                
+                const requestBody = {
+                    inputs: {
+                        table_name: tableName,
+                        csv_files: [{
+                            type: "document",
+                            transfer_method: "local_file",
+                            upload_file_id: uploadFileId
+                        }]
+                    },
+                    response_mode: "streaming",
+                    user: "abc-123"
+                };
+                
+                console.log("Request body:", requestBody);
+                
+                const response = await fetch(`/api/chart/csv_to_db`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-token": token,
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const jsonData = await response.json();
+                console.log('Received JSON:', jsonData);
+                
+                const dataArray = jsonData.split('\n\n');
+                let results = [];
+                
+                dataArray.forEach(data => {
+                    if (data && data != "event: ping") {
+                        const dify_obj = JSON.parse(data.replace('data:', ""));
+                        console.log('Received Each data:', dify_obj);
+                        
+                        // 更新状态显示
+                        if (dify_obj.event) {
+                            setStatus(`状态: ${dify_obj.event}`, 'primary');
+                        }
+                        
+                        if (dify_obj.event === "workflow_finished" && dify_obj.data && dify_obj.data.outputs) {
+                            const outputArray = dify_obj.data.outputs;
+                            console.log("Output array:", outputArray);
+                            setStatus(`状态：${outputArray.result[0]}`, 'success');
+                            document.getElementById('chart-table-desc').value = outputArray.sql.replace("CREATE TABLE ","");
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Fetch error:', err);
+                setStatus(`发生错误: ${err.message}，请确保csv的数据格式及字段命名符合mySQL数据库的要求。`, 'danger');
+            }
+        });
+        
+        // 上传文件的函数
+        async function uploadFile(file, token) {
+            const uploadUrl = `/api/files/upload_csv`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('token', token);
+            
+            try {
+                const response = await fetch(uploadUrl, {
+                    method: "POST",
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.id; // 返回 upload_file_id
+                } else {
+                    console.error("文件上传失败，状态码:", response.status);
+                    return null;
+                }
+            } catch (err) {
+                console.error("文件上传错误:", err);
+                return null;
+            }
+        }
+        
+        // 生成图表按钮事件
+        document.getElementById('generate-chart-button').addEventListener("click", async () => {
+            const statusDiv = document.getElementById('status').querySelector('p');
+            const tableDesc = document.getElementById('chart-table-desc').value.trim();
+            const chartTypeInput = document.getElementById('chart-type-input').value.trim();
+            const xAxisSelect = document.getElementById('x-axis-select');
+            const yAxisSelect = document.getElementById('y-axis-select');
+            
+            // 验证表结构描述
+            if (!tableDesc) {
+                setStatus('请输入表结构描述', 'danger');
+                highlightInput('chart-table-desc');
+                return;
+            }
+            
+            // 验证图表提示词
+            if (!chartTypeInput) {
+                setStatus('请输入图表提示词', 'danger');
+                highlightInput('chart-type-input');
+                return;
+            }
+            
+            setStatus('正在生成...', 'primary');
+            
+            try {
+                const requestBody = {
+                    inputs: {
+                        table_desc: tableDesc,
+                    },
+                    query: chartTypeInput,
+                    response_mode: "streaming",
+                    user: "abc-123"
+                };
+                
+                console.log("Request body:", requestBody);
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                const response = await fetch(`/api/chart/chat`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-token": token
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const jsonData = await response.json();
+                console.log('Received JSON:', jsonData);
+                
+                const dataArray = jsonData.split('\n\n');
+                let thought = '';
+                
+                dataArray.forEach(data => {
+                    if (data && data != "event: ping") {
+                        const dify_obj = JSON.parse(data.replace('data:', ""));
+                        console.log('Received Each data:', dify_obj);
+                        
+                        // 更新状态显示
+                        if (dify_obj.event) {
+                            setStatus(`状态: ${dify_obj.event}`, 'primary');
+                        }
+                        
+                        if (dify_obj.event === "agent_thought" && dify_obj.observation) {
+                            // 原始的嵌套JSON字符串
+                            const jsonString = dify_obj.observation;
+                            console.log("jsonString:", jsonString);
+                            
+                            // 第一步：解析外层JSON字符串
+                            const parsedOuterJson = JSON.parse(jsonString);
+                            console.log("parsedOuterJson:", parsedOuterJson);
+                            
+                            // 第二步：解析内层JSON字符串
+                            const fullString = parsedOuterJson.execute_sql2;
+                            const execute_sql2 = fullString.split("tool response")[0].trim();
+                            console.log("execute_sql2:", execute_sql2);
+                            
+                            const parsedInnerJson = JSON.parse(execute_sql2);
+                            console.log("parsedInnerJson:", parsedInnerJson);
+                            
+                            csvData = parsedInnerJson.result;
+                            console.log('csvData:', csvData);
+                        } 
+                        else if (dify_obj.event === "agent_thought" && dify_obj.thought) {
+                            thought = dify_obj.thought;
+                            console.log('thought:', thought);
+                            
+                            // 展示结果
+                            document.getElementById('thought').querySelector('p').innerHTML = marked(thought);
+                        }
+                    }
+                });
+                
+                // 生成图表
+                generateChart();
+            } catch (err) {
+                console.error('Fetch error:', err);
+                setStatus(`发生错误: ${err.message}，请重试或调整大模型数据分析智能体的提示词，使得一次就可以写出正确的SQL。`, 'danger');
+            }
+        });
+        
+        // 设置状态信息
+        function setStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const statusText = statusDiv.querySelector('p');
+            const iconClass = {
+                info: 'fa-info-circle text-primary',
+                primary: 'fa-spinner fa-spin text-primary',
+                success: 'fa-check-circle text-success',
+                danger: 'fa-exclamation-circle text-danger'
+            };
+            
+            // 更新图标和文本
+            statusDiv.querySelector('i').className = `fa ${iconClass[type]} mr-2`;
+            statusText.textContent = message;
+            
+            // 添加动画效果
+            statusDiv.classList.add('scale-105');
+            setTimeout(() => {
+                statusDiv.classList.remove('scale-105');
+            }, 300);
+            
+            // 添加背景颜色
+            statusDiv.className = `card bg-gray-50 border border-gray-200 transition-all duration-500 ease-in-out`;
+            
+            if (type === 'success') {
+                statusDiv.classList.add('bg-green-50', 'border-green-200');
+            } else if (type === 'danger') {
+                statusDiv.classList.add('bg-red-50', 'border-red-200');
+            } else if (type === 'primary') {
+                statusDiv.classList.add('bg-blue-50', 'border-blue-200');
+            }
+        }
+        
+        // 高亮输入框
+        function highlightInput(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('input-error');
+                
+                // 添加抖动动画
+                element.classList.add('animate-shake');
+                setTimeout(() => {
+                    element.classList.remove('animate-shake');
+                }, 500);
+                
+                // 3秒后自动移除错误样式
+                setTimeout(() => {
+                    element.classList.remove('input-error');
+                }, 3000);
+            }
+        }
+        
+        // 添加抖动动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                20%, 40%, 60%, 80% { transform: translateX(5px); }
+            }
+            .animate-shake {
+                animation: shake 0.5s ease-in-out;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        function generateChart() {
+            const statusDiv = document.getElementById('status').querySelector('p');
+            const chartContainer = document.getElementById('chart-container');
+            const xAxisSelect = document.getElementById('x-axis-select');
+            const yAxisSelect = document.getElementById('y-axis-select');
+        
+            if (!csvData.length) {
+                setStatus('未获取到数据', 'danger');
+                return;
+            }
+        
+            // 动态提取列名
+            const columns = Object.keys(csvData[0]);
+        
+            // 填充下拉菜单
+            xAxisSelect.innerHTML = '';
+            yAxisSelect.innerHTML = '';
+        
+            columns.forEach(column => {
+                const xOption = document.createElement('option');
+                xOption.value = column;
+                xOption.text = column;
+                xAxisSelect.appendChild(xOption);
+        
+                const yOption = document.createElement('option');
+                yOption.value = column;
+                yOption.text = column;
+                yAxisSelect.appendChild(yOption);
+                
+            });
+
+            // 设置yAxisSelect默认选择第三个元素
+            if (columns.length >= 3) {
+                yAxisSelect.selectedIndex = 2;
+            }
+        
+            // 获取用户选择的 X 轴和 Y 轴列名
+            const xAxis = xAxisSelect.value;
+            const yAxis = yAxisSelect.value;
+        
+            // 动态提取数据集标签列名（除了 X 轴和 Y 轴之外的列）
+            const datasetLabelColumn = columns.find(col => col !== xAxis && col !== yAxis);
+        
+            // 判断是否启用堆叠显示
+            const isStacked = columns.length > 2;
+        
+            // 动态提取所有数据集标签（例如坐席姓名）
+            const datasetLabels = isStacked ? Array.from(new Set(csvData.map(row => row[datasetLabelColumn]))) : [];
+        
+            // 按 X 轴列名分组，并为每个数据集标签生成独立的数据集
+            const groupedData = csvData.reduce((acc, row) => {
+                const xValue = row[xAxis]; // X 轴值
+                const yValue = parseFloat(row[yAxis]); // Y 轴值
+                const label = isStacked ? row[datasetLabelColumn] : null; // 数据集标签
+        
+                if (!acc[xValue]) {
+                    acc[xValue] = {}; // 初始化每个 X 轴值的数据
+                }
+                if (isStacked && !acc[xValue][label]) {
+                    acc[xValue][label] = 0; // 初始化每个数据集标签的数据
+                }
+                if (isStacked) {
+                    acc[xValue][label] += yValue; // 累加每个数据集标签的 Y 轴值
+                } else {
+                    acc[xValue].total = (acc[xValue].total || 0) + yValue; // 累加总值
+                }
+                return acc;
+            }, {});
+        
+            // 提取 X 轴标签
+            const labels = Object.keys(groupedData);
+        
+            // 为每个数据集标签生成一个数据集
+            const datasets = isStacked
+                ? datasetLabels.map(label => ({
+                    label: label,
+                    data: labels.map(date => groupedData[date][label] || 0), // 如果某天没有数据，用 0 填充
+                    backgroundColor: `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.2)`,
+                    borderColor: `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 1)`,
+                    borderWidth: 1,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }))
+                : [
+                    {
+                        label: yAxis,
+                        data: labels.map(date => groupedData[date].total || 0), // 使用总值
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ];
+        
+            if (chart) {
+                chart.destroy(); // 如果图表已存在，先销毁
+            }
+        
+            const ctx = document.getElementById('chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line', // 默认使用折线图
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: xAxis
+                            },
+                            stacked: isStacked // 启用 X 轴堆叠
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: yAxis
+                            },
+                            beginAtZero: true,
+                            stacked: isStacked // 启用 Y 轴堆叠
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${yAxis} vs ${xAxis}`
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            });
+        
+            chartContainer.style.display = 'block';
+            setStatus('图表生成成功！', 'success');
+        }
+        
+        function updateChart(newChartType) {
+            if (!chart) {
+                console.error("No chart instance found. Please generate a chart first.");
+                return;
+            }
+        
+            // 获取用户选择的 X 轴和 Y 轴列名
+            const xAxis = document.getElementById('x-axis-select').value;
+            const yAxis = document.getElementById('y-axis-select').value;
+        
+            // 动态提取列名
+            const columns = Object.keys(csvData[0]);
+        
+            // 动态提取数据集标签列名（除了 X 轴和 Y 轴之外的列）
+            const datasetLabelColumn = columns.find(col => col !== xAxis && col !== yAxis);
+        
+            // 判断是否启用堆叠显示
+            const isStacked = columns.length > 2;
+        
+            // 动态提取所有数据集标签（例如坐席姓名）
+            const datasetLabels = isStacked ? Array.from(new Set(csvData.map(row => row[datasetLabelColumn]))) : [];
+        
+            // 按 X 轴列名分组，并为每个数据集标签生成独立的数据集
+            const groupedData = csvData.reduce((acc, row) => {
+                const xValue = row[xAxis]; // X 轴值
+                const yValue = parseFloat(row[yAxis]); // Y 轴值
+                const label = isStacked ? row[datasetLabelColumn] : null; // 数据集标签
+        
+                if (!acc[xValue]) {
+                    acc[xValue] = {}; // 初始化每个 X 轴值的数据
+                }
+                if (isStacked && !acc[xValue][label]) {
+                    acc[xValue][label] = 0; // 初始化每个数据集标签的数据
+                }
+                if (isStacked) {
+                    acc[xValue][label] += yValue; // 累加每个数据集标签的 Y 轴值
+                } else {
+                    acc[xValue].total = (acc[xValue].total || 0) + yValue; // 累加总值
+                }
+                return acc;
+            }, {});
+        
+            // 提取 X 轴标签
+            const labels = Object.keys(groupedData);
+        
+            // 为每个数据集标签生成一个数据集
+            const datasets = isStacked
+                ? datasetLabels.map(label => ({
+                    label: label,
+                    data: labels.map(date => groupedData[date][label] || 0), // 如果某天没有数据，用 0 填充
+                    backgroundColor: `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 0.2)`,
+                    borderColor: `rgba(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, 1)`,
+                    borderWidth: 1,
+                    fill: newChartType === 'line' ? false : true,
+                    pointRadius: newChartType === 'line' ? 5 : 0,
+                    pointHoverRadius: newChartType === 'line' ? 7 : 0
+                }))
+                : [
+                    {
+                        label: yAxis,
+                        data: labels.map(date => groupedData[date].total || 0), // 使用总值
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1,
+                        fill: newChartType === 'line' ? false : true,
+                        pointRadius: newChartType === 'line' ? 5 : 0,
+                        pointHoverRadius: newChartType === 'line' ? 7 : 0
+                    }
+                ];
+        
+            // 更新图表类型
+            chart.config.type = newChartType;
+        
+            // 更新数据和配置
+            chart.data.labels = labels;
+            chart.data.datasets = datasets;
+        
+            chart.options.scales = {
+                x: {
+                    title: {
+                        display: true,
+                        text: xAxis
+                    },
+                    stacked: isStacked // 启用 X 轴堆叠
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: yAxis
+                    },
+                    beginAtZero: true,
+                    stacked: isStacked // 启用 Y 轴堆叠
+                }
+            };
+        
+            chart.options.plugins.title.text = `${yAxis} vs ${xAxis}`;
+        
+            // 更新图表
+            chart.update();
+        }        
+    </script>
+</body>
+</html>

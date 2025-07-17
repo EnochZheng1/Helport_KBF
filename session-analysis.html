@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会话分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <!-- 配置 Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#2563eb',
+                        neutral: '#f3f4f6',
+                        accent: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        info: '#06b6d4'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .shadow-hover {
+                transition: all 0.3s ease;
+            }
+            .shadow-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            .select-wrapper {
+                position: relative;
+            }
+            .select-wrapper::after {
+                content: "\f078";
+                font-family: "Font Awesome 6 Free";
+                font-weight: 900;
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none;
+                color: #6b7280;
+            }
+            .date-input {
+                @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all text-lg; /* 增大字体 */
+                height: 50px; /* 增大高度 */
+            }
+            .table-header {
+                @apply px-6 py-4 text-left text-lg font-bold text-white uppercase tracking-wider bg-primary sticky top-0; /* 增大字体，设置为黑粗体，固定标题 */
+            }
+            .table-cell {
+                @apply px-6 py-4 whitespace-normal break-words;
+            }
+            .session-link {
+                @apply text-primary hover:text-secondary underline;
+            }
+            .input-error {
+                @apply border-danger ring-1 ring-danger;
+            }
+            .error-message {
+                @apply text-danger text-sm mt-1 flex items-center;
+            }
+            .status-indicator {
+                @apply transition-all duration-500 ease-in-out;
+            }
+            /* 使表格出现滚动条 */
+            #result-table-container {
+                max-height: 400px; /* 设置最大高度 */
+                overflow-y: auto; /* 垂直滚动条 */
+            }
+            /* 页面高度自适应 */
+            body {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            #main-content {
+                flex: 1;
+            }
+            /* 新增进度条样式 */
+            #progress-container {
+                height: 4px;
+                border-radius: 2px;
+                background-color: #f3f4f6;
+                margin: 1rem 0;
+            }
+            #progress-bar {
+                height: 100%;
+                background-color: #3b82f6;
+                transition: width 0.3s ease;
+            }
+            /* 保存的进度状态样式 */
+            .saved-progress {
+                @apply bg-info/10 border-l-4 border-info p-4 my-4 rounded-r-lg;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 顶部卡片 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 transform transition-all duration-300 hover:shadow-lg">
+            <form id="analysis-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- 开始时间 -->
+                    <div class="space-y-2">
+                        <label for="start-time" class="block text-sm font-medium text-gray-700">开始时间</label>
+                        <input type="datetime-local" id="start-time" value="2025-01-01T00:00" 
+                               class="date-input">
+                    </div>
+                    
+                    <!-- 结束时间 -->
+                    <div class="space-y-2">
+                        <label for="end-time" class="block text-sm font-medium text-gray-700">结束时间</label>
+                        <input type="datetime-local" id="end-time" value="2025-12-31T23:59" 
+                               class="date-input">
+                    </div>
+                    
+                    <!-- client_id -->
+                    <div class="space-y-2">
+                        <label for="client-id" class="block text-sm font-medium text-gray-700">租户选择</label>
+                        <div class="select-wrapper">
+                            <select id="client-id" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请选择Client ID --</option>
+                                <!-- Client ID 选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 会话数量 -->
+                    <div class="space-y-2">
+                        <label for="session-count" class="block text-sm font-medium text-gray-700">会话数量</label>
+                        <input type="number" id="session-count" value="5" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                </div>
+                
+                <!-- 业务和产品选择 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- 业务选择 -->
+                    <div class="space-y-2">
+                        <label for="business-select" class="block text-sm font-medium text-gray-700">业务选择</label>
+                        <div class="select-wrapper">
+                            <select id="business-select" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请选择业务 --</option>
+                                <!-- 业务选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 产品选择 -->
+                    <div class="space-y-2">
+                        <label for="product-select" class="block text-sm font-medium text-gray-700">产品选择</label>
+                        <div class="select-wrapper">
+                            <select id="product-select" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
+                                <option value="">-- 请先选择业务 --</option>
+                                <!-- 产品选项将通过JavaScript动态生成 -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="progress-container" class="hidden">
+                    <div id="progress-bar" class="h-full bg-primary" style="width: 0%"></div>
+                </div>
+                <div id="progress-text" class="mt-2 text-sm text-gray-600"></div>
+                <div id="progress-status" class="mt-1 text-sm text-gray-500"></div>
+                <!-- 新增：保存的进度状态显示 -->
+                <div id="saved-progress-status" class="hidden saved-progress">
+                    <p id="saved-progress-text"></p>
+                </div>
+                <!-- 按钮区域 -->
+                <div class="flex flex-wrap gap-4">
+                    <button type="button" id="analyze-button" 
+                            class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover">
+                        <i class="fa-solid fa-file-text"></i> 会话分析
+                    </button>
+                    <button type="button" id="cancel-analysis" 
+                            class="px-6 py-3 bg-warning text-white rounded-lg hover:bg-warning/90 transition-colors duration-300 flex items-center gap-2 shadow-hover hidden">
+                        <i class="fa-solid fa-stop"></i> 取消分析
+                    </button>
+                    <button type="button" id="export-csv-button" 
+                            class="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-300 flex items-center gap-2 shadow-hover">
+                        <i class="fa-solid fa-file-csv"></i> 导出为 CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 状态区域 -->
+        <div id="status" class="bg-neutral p-4 rounded-lg border border-gray-200 mb-6 flex items-center">
+            <i class="fa-solid fa-clock-o mr-3 text-gray-500"></i>
+            <span>等待分析...</span>
+        </div>
+        
+        <!-- 结果表格 -->
+        <div id="result-table-container" class="bg-white rounded-xl shadow-md p-6 mb-6 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table id="result-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="table-header w-1/6">序号</th> <!-- 新增序号列 -->
+                            <th class="table-header w-1/6">会话地址</th>
+                            <th class="table-header w-1/6">客户语句</th>
+                            <th class="table-header w-1/6">标准问题</th>
+                            <th class="table-header w-1/6">新问题</th>
+                            <th class="table-header w-1/6">坐席语句</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="result-tbody">
+                        <!-- 数据将由JavaScript动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 无数据消息 -->
+        <div id="no-data-message" class="hidden text-danger mt-4 flex items-center">
+            <i class="fa-solid fa-exclamation-circle mr-2"></i>
+            <span>没有数据可供导出。</span>
+        </div>
+    </div>
+
+    <script>
+        // 存储业务和产品数据
+        let businessData = [];
+        let productData = [];
+        let clientIdData = [];
+        let isAnalyzing = false; // 防止重复提交标志
+        let isCanceling = false; // 取消分析标志
+        let currentProgress = {
+            sessionIds: [],
+            processedCount: 0,
+            totalCount: 0,
+            globalIndex: 1,
+            lastSessionId: null,
+            params: {},
+            processedResults: [] // 新增：保存已处理的分析结果
+        }; // 当前进度状态
+        const STORAGE_KEY = 'session_analysis_progress'; // 本地存储键名
+        // 全局变量：记录任务开始时间和处理时间
+        let taskStartTime = 0;
+        let sessionProcessingTimes = []; // 记录每个会话的处理时间（毫秒
+
+        // 更新状态显示
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById("status");
+         
+            let icon, color;
+            
+            switch(type) {
+                case 'loading':
+                    icon = '<i class="fa-solid fa-spinner fa-spin mr-3"></i>';
+                    color = 'text-primary';
+                    break;
+                case 'success':
+                    icon = '<i class="fa-solid fa-check-circle mr-3"></i>';
+                    color = 'text-accent';
+                    break;
+                case 'error':
+                    icon = '<i class="fa-solid fa-exclamation-circle mr-3"></i>';
+                    color = 'text-danger';
+                    break;
+                case 'canceling':
+                    icon = '<i class="fa-solid fa-spinner fa-spin mr-3"></i>';
+                    color = 'text-warning';
+                    break;
+                case 'canceled':
+                    icon = '<i class="fa-solid fa-ban mr-3"></i>';
+                    color = 'text-warning';
+                    break;
+                default:
+                    icon = '<i class="fa-solid fa-info-circle mr-3"></i>';
+                    color = 'text-gray-600';
+            }
+            
+            statusDiv.innerHTML = `<span class="${color}">${icon}</span><span>${message}</span>`;
+        
+        }
+
+        // 更新进度条（修改版，添加剩余时间显示）
+        function updateProgress(current, total) {
+            const progressBar = document.getElementById("progress-bar");
+            const progressText = document.getElementById("progress-text");
+            
+            // 计算百分比（防止NaN）
+            const percentage = total > 0 
+                ? Math.min(100, (current / total) * 100) 
+                : 0;
+            
+            // 计算剩余时间（简单平均法）
+            let remainingTime = 0;
+            if (current > 0 && total > current) {
+                const totalElapsedTime = Date.now() - taskStartTime;
+                const avgTimePerSession = totalElapsedTime / current;
+                const remainingSessions = total - current;
+                remainingTime = Math.round(avgTimePerSession * remainingSessions);
+            }
+            
+            // 更新进度条UI
+            progressBar.style.width = `${percentage}%`;
+            progressBar.setAttribute('aria-valuenow', percentage);
+            
+            // 更新进度文本（添加剩余时间显示）
+            let timeEstimate = '';
+            if (remainingTime > 0) {
+                timeEstimate = `，预计还需 ${formatTime(remainingTime)}`;
+            }
+            progressText.textContent = `进度: ${current}/${total} (${Math.round(percentage)}%)${timeEstimate}`;
+            
+            // 保存进度到本地存储
+            saveProgress(current, total);
+        }
+
+        // 格式化时间显示（毫秒转时分秒）
+        function formatTime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            if (seconds < 60) return `${seconds}秒`;
+            
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            if (minutes < 60) return `${minutes}分${remainingSeconds}秒`;
+            
+            const hours = Math.floor(minutes / 60);
+            const remainingMinutes = minutes % 60;
+            return `${hours}时${remainingMinutes}分${remainingSeconds}秒`;
+        }
+
+        // 保存进度到本地存储（修改版，包含处理时间）
+        function saveProgress(processed, total) {
+            if (currentProgress.sessionIds.length > 0) {
+                currentProgress.processedCount = processed;
+                currentProgress.totalCount = total;
+                currentProgress.processingTimes = sessionProcessingTimes; // 保存处理时间
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    ...currentProgress,
+                    params: {
+                        product_id: document.getElementById("product-select").value,
+                        client_id: document.getElementById("client-id").value,
+                        conversation_count: document.getElementById("session-count").value,
+                        start_date: document.getElementById("start-time").value,
+                        end_date: document.getElementById("end-time").value
+                    }
+                }));
+                
+                // 显示保存的进度状态
+                showSavedProgress();
+            }
+        }
+
+        // 显示保存的进度状态
+        function showSavedProgress() {
+            const savedProgressStatus = document.getElementById("saved-progress-status");
+            const savedProgressText = document.getElementById("saved-progress-text");
+            
+            if (hasSavedProgress()) {
+                savedProgressStatus.classList.remove("hidden");
+                savedProgressText.textContent = `已保存分析进度: ${currentProgress.processedCount}/${currentProgress.totalCount} 会话`;
+            } else {
+                savedProgressStatus.classList.add("hidden");
+            }
+        }
+
+        // 检查是否有保存的进度
+        function hasSavedProgress() {
+            const savedProgress = localStorage.getItem(STORAGE_KEY);
+            if (savedProgress) {
+                try {
+                    const parsedProgress = JSON.parse(savedProgress);
+                    // 检查保存的参数是否与当前参数匹配
+                    const currentParams = {
+                        product_id: document.getElementById("product-select").value,
+                        client_id: document.getElementById("client-id").value,
+                        conversation_count: document.getElementById("session-count").value,
+                        start_date: document.getElementById("start-time").value,
+                        end_date: document.getElementById("end-time").value
+                    };
+                    
+                    // 简单比较参数是否匹配
+                    const paramsMatch = 
+                        parsedProgress.params.product_id === currentParams.product_id &&
+                        parsedProgress.params.client_id === currentParams.client_id &&
+                        parsedProgress.params.conversation_count == currentParams.conversation_count &&
+                        parsedProgress.params.start_date === currentParams.start_date &&
+                        parsedProgress.params.end_date === currentParams.end_date;
+                    
+                    if (paramsMatch) {
+                        if (parsedProgress.processingTimes) {
+                            sessionProcessingTimes = parsedProgress.processingTimes; // 恢复处理时间
+                        }
+                        currentProgress = parsedProgress;
+                        return true;
+                    } else {
+                        // 参数不匹配，清除保存的进度
+                        localStorage.removeItem(STORAGE_KEY);
+                        return false;
+                    }
+                } catch (error) {
+                    console.error("解析保存的进度失败:", error);
+                    localStorage.removeItem(STORAGE_KEY);
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        // 清除保存的进度
+        function clearSavedProgress() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById("saved-progress-status").classList.add("hidden");
+            currentProgress = {
+                sessionIds: [],
+                processedCount: 0,
+                totalCount: 0,
+                globalIndex: 1,
+                lastSessionId: null,
+                params: {},
+                processedResults: []
+            };
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener("DOMContentLoaded", () => {
+            // 绑定事件处理函数
+            document.getElementById("business-select").addEventListener("change", onBusinessSelectChange);
+            document.getElementById("analyze-button").addEventListener("click", analyzeSessions);
+            document.getElementById("export-csv-button").addEventListener("click", exportToCSV);
+            document.getElementById("cancel-analysis").addEventListener("click", cancelAnalysis);
+            
+            // 初始化业务数据和Client ID数据
+            fetchBusinessData();
+            fetchClientIds();
+            
+            // 检查是否有保存的进度，并恢复已处理的结果
+            if (hasSavedProgress() && currentProgress.processedResults.length > 0) {
+                renderProcessedResults();
+            }
+            showSavedProgress();
+        });
+        
+        // 渲染已处理的分析结果
+        function renderProcessedResults() {
+            const resultTbody = document.getElementById("result-tbody");
+            resultTbody.innerHTML = "";
+            
+            currentProgress.processedResults.forEach((result, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="table-cell">${result.index}</td>
+                    <td class="table-cell"><a href="https://helport.ai/assistant-console/session/${result.sessionUuid}" target="_blank" class="session-link">会话地址</a></td>
+                    <td class="table-cell">${result.customerSentence}</td>
+                    <td class="table-cell">${result.standardQuestion}</td>
+                    <td class="table-cell">${result.newIssue ? "是" : "否"}</td>
+                    <td class="table-cell">${result.agentSentence}</td>
+                `;
+                resultTbody.appendChild(row);
+            });
+        }
+        
+        // 获取 Client ID 数据
+        function fetchClientIds() {
+            const statusDiv = document.getElementById("status");
+            statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-3 text-primary"></i><span>正在获取Client ID列表...</span>';
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            // 直接调用API获取Client ID数据
+            fetch('/user/client_id',
+               {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                    }
+               })
+               .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+               .then(data => {
+                    clientIdData = data;
+                    renderClientIdSelect();
+                    // 更新状态
+                    statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-3 text-accent"></i><span>Client ID列表已加载</span>';
+                })
+               .catch(error => {
+                    console.error('Error fetching client IDs:', error);
+                    statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>获取Client ID失败: ${error.message}</span>`;
+                });
+        }
+        
+        // 渲染Client ID选择框
+        function renderClientIdSelect() {
+            const clientIdSelect = document.getElementById("client-id");
+            
+            // 清空现有选项
+            clientIdSelect.innerHTML = '<option value="">-- 请选择租户 --</option>';
+            
+            // 添加Client ID选项
+            clientIdData.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = `${client.name} (${client.id})`;
+                clientIdSelect.appendChild(option);
+            });
+
+            // 默认选择第一个有效选项（跳过占位符）
+            if (clientIdSelect.options.length > 1) {
+                clientIdSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+        }
+        
+        // 获取业务数据
+        function fetchBusinessData() {
+            const statusDiv = document.getElementById("status");
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-3 text-primary"></i><span>正在获取业务列表...</span>';
+            
+            // 直接调用API获取业务数据
+            fetch('/user/biz/product',
+             {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                }
+             })
+             .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                businessData = data;
+                renderBusinessSelect();
+                // 更新状态
+                statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-3 text-accent"></i><span>业务列表已加载</span>';
+            })
+            .catch(error => {
+                console.error('Error fetching business data:', error);
+                statusDiv.innerHTML = `<i class="fa-solid fa-exclamation-circle mr-3 text-danger"></i><span>获取业务数据失败: ${error.message}</span>`;
+            });
+        }
+        
+        // 渲染业务选择下拉框
+        function renderBusinessSelect() {
+            const businessSelect = document.getElementById("business-select");
+            
+            // 清空现有选项
+            businessSelect.innerHTML = '<option value="">-- 请选择业务 --</option>';
+            
+            // 添加业务选项
+            businessData.forEach(business => {
+                productData = business.products;
+                const option = document.createElement('option');
+                option.value = business.businessId;
+                option.textContent = `${business.businessName} (${business.businessId})`;
+                businessSelect.appendChild(option);
+            });
+            // 默认选择第一个有效选项（跳过占位符）
+            if (businessSelect.options.length > 1) {
+                businessSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+            onBusinessSelectChange();
+        }
+        
+        // 业务选择变更事件处理
+        function onBusinessSelectChange() {
+            const productSelect = document.getElementById("product-select");
+            
+            // 清空产品选择框
+            productSelect.innerHTML = '<option value="">-- 请选择产品 --</option>';
+            
+            if (productData) {
+                // 添加产品选项
+                productData.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.id;
+                    option.textContent = `${product.name} (${product.id})`;
+                    productSelect.appendChild(option);
+                });
+            }
+            // 默认选择第一个有效选项（跳过占位符）
+            if (productSelect.options.length > 1) {
+                productSelect.options[1].selected = true; // 索引0为占位符，索引1为第一个有效选项
+            }
+        }
+
+        // 分析会话
+        async function analyzeSessions() {
+            // 防止重复提交
+            if (isAnalyzing) return;
+
+            // 初始化处理时间记录
+            sessionProcessingTimes = [];
+            taskStartTime = Date.now(); // 记录任务开始时间
+                    
+            const startTime = document.getElementById("start-time").value;
+            const endTime = document.getElementById("end-time").value;
+            const clientId = document.getElementById("client-id").value;
+            const businessId = document.getElementById("business-select").value;
+            const productId = document.getElementById("product-select").value;
+            const sessionCount = document.getElementById("session-count").value;
+            
+            const statusDiv = document.getElementById("status");
+            const resultTbody = document.getElementById("result-tbody");
+            const progressContainer = document.getElementById("progress-container");
+            const cancelButton = document.getElementById("cancel-analysis");
+            const analyzeButton = document.getElementById("analyze-button");
+            
+            // 验证输入
+            if (!clientId) {
+                updateStatus('请选择租户', 'error');
+                return;
+            }
+            
+            if (!businessId) {
+                updateStatus('请选择业务', 'error');
+                return;
+            }
+            
+            if (!productId) {
+                updateStatus('请选择产品', 'error');
+                return;
+            }
+            
+            // 重置UI状态
+            updateStatus('正在准备分析...', 'loading');
+            resultTbody.innerHTML = ""; // 清空表格内容，但保留已保存的结果（如果有）
+            progressContainer.classList.remove("hidden");
+            cancelButton.classList.remove("hidden");
+            analyzeButton.disabled = true;
+            isAnalyzing = true;
+            isCanceling = false;
+            
+            try {
+                let sessionIds = [];
+                let questionList = [];
+                
+                // 检查是否有保存的进度
+                if (hasSavedProgress() && currentProgress.sessionIds.length > 0) {
+                    sessionIds = currentProgress.sessionIds;
+                    questionList = currentProgress.questionList || [];
+                    updateStatus(`从保存的进度恢复分析...`, 'loading');
+                    
+                    // 先渲染已保存的结果
+                    renderProcessedResults();
+                } else {
+                    // 1. 获取会话ID列表及问题列表
+                    updateStatus('正在获取会话列表...', 'loading');
+                    
+                    const {_sessionIds, _questionList}  = await fetchSessionIdsAndQuestions({
+                        product_id: productId,
+                        client_id: clientId,
+                        conversation_count: sessionCount,
+                        start_date: startTime,
+                        end_date: endTime,
+                    });
+                    
+                    if (_sessionIds.length === 0) {
+                        updateStatus('没有找到匹配的会话数据', 'error');
+                        cleanupAfterAnalysis();
+                        return;
+                    }
+                    
+                    sessionIds = _sessionIds;
+                    questionList = _questionList;
+                    currentProgress.sessionIds = sessionIds;
+                    currentProgress.totalCount = sessionIds.length;
+                    currentProgress.processedCount = 0;
+                    currentProgress.globalIndex = 1;
+                    currentProgress.questionList = questionList;
+                    currentProgress.params = {
+                        product_id: productId,
+                        client_id: clientId,
+                        conversation_count: sessionCount,
+                        start_date: startTime,
+                        end_date: endTime
+                    };
+                    currentProgress.processedResults = []; // 重置已处理结果
+                    
+                    updateStatus(`找到 ${sessionIds.length} 个会话，开始分析...`, 'loading');
+                }
+                
+                updateProgress(currentProgress.processedCount, currentProgress.totalCount);
+                
+                // 2. 循环处理每个会话
+                let startIndex = currentProgress.processedCount;
+                
+                for (let i = startIndex; i < sessionIds.length && !isCanceling; i++) {
+                    const sessionId = sessionIds[i];
+                    const sessionStart = Date.now(); // 记录单个会话开始时间
+                    // 更新进度显示
+                    updateProgress(i + 1, sessionIds.length);
+                    updateStatus(`正在分析会话 ${i+1}/${sessionIds.length}: ${sessionId}`, 'loading');
+                    
+                    try {
+                        // 4. 获取单个会话内容
+                        const {sessionContent, sessionUuid} = await fetchSingleSession({
+                            session_id: sessionId,
+                            client_id: clientId
+                        });
+
+                        // 5. 分析单个会话
+                        const analysisResult = await analyzeSingleSession({
+                            conversation_content: sessionContent,
+                            session_uuid: sessionUuid,
+                            standard_question_list: questionList,
+                            client_id: clientId
+                        });
+                        
+                        // 6. 增量渲染结果
+                        if (analysisResult && analysisResult.length > 0) {
+                            analysisResult.forEach((intent, intentIndex) => {
+                                const resultItem = {
+                                    index: currentProgress.globalIndex,
+                                    sessionUuid: intent.sessionUuid,
+                                    customerSentence: intent.customerSentence || "N/A",
+                                    standardQuestion: intent.standardQuestion || "N/A",
+                                    newIssue: intent.newIssue,
+                                    agentSentence: intent.agentSentence || "N/A"
+                                };
+                                
+                                currentProgress.processedResults.push(resultItem);
+                                currentProgress.globalIndex++;
+                                
+                                const row = document.createElement("tr");
+                                row.innerHTML = `
+                                    <td class="table-cell">${resultItem.index}</td>
+                                    <td class="table-cell"><a href="https://helport.ai/assistant-console/session/${resultItem.sessionUuid}" target="_blank" class="session-link">会话地址</a></td>
+                                    <td class="table-cell">${resultItem.customerSentence}</td>
+                                    <td class="table-cell">${resultItem.standardQuestion}</td>
+                                    <td class="table-cell">${resultItem.newIssue ? "是" : "否"}</td>
+                                    <td class="table-cell">${resultItem.agentSentence}</td>
+                                `;
+                                resultTbody.appendChild(row);
+                            });
+
+                            // 记录单个会话处理时间
+                            const sessionProcessTime = Date.now() - sessionStart;
+                            sessionProcessingTimes.push(sessionProcessTime);
+                            if (sessionProcessingTimes.length > 30) {
+                                sessionProcessingTimes.shift(); // 保留最近30个处理时间
+                            }
+                            
+                            // 滚动到最新添加的行
+                            resultTbody.scrollTop = resultTbody.scrollHeight;
+                        }
+                        
+                    } catch (error) {
+                        console.error(`分析会话 ${sessionId} 失败:`, error);
+                        updateStatus(`会话 ${sessionId} 分析失败: ${error.message}`, 'error');
+                        // 继续处理下一个会话
+                    }
+                }
+                
+                // 7. 显示最终状态
+                if (isCanceling) {
+                    updateStatus(`分析已取消，已处理 ${currentProgress.processedCount} 个会话`, 'canceled');
+                } else {
+                    updateProgress(sessionIds.length, sessionIds.length);
+                    if (resultTbody.children.length > 0) {
+                        updateStatus(`分析完成，共 ${resultTbody.children.length} 条记录`, 'success');
+                    } else {
+                        updateStatus('没有有效分析结果', 'warning');
+                    }
+                    // 分析完成后清除保存的进度
+                    clearSavedProgress();
+                }
+                
+            } catch (error) {
+                console.error('分析过程发生错误:', error);
+                updateStatus(`分析失败: ${error.message}`, 'error');
+                
+            } finally {
+                cleanupAfterAnalysis();
+            }
+        }
+
+        // 取消分析
+        function cancelAnalysis() {
+            isCanceling = true;
+            updateStatus('正在取消分析...', 'canceling');
+            // 这里可以添加取消网络请求的逻辑
+        }
+
+        // 分析完成后清理
+        function cleanupAfterAnalysis() {
+            const cancelButton = document.getElementById("cancel-analysis");
+            const analyzeButton = document.getElementById("analyze-button");
+            
+            isAnalyzing = false;
+            isCanceling = false;
+            cancelButton.classList.add("hidden");
+            analyzeButton.disabled = false;
+        }
+
+        // 获取会话ID列表
+        async function fetchSessionIdsAndQuestions(params) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            const requestBody = {
+                inputs: params,
+                response_mode: "streaming",
+                user: params.client_id,
+                token: token
+            };
+            
+            const response = await fetch(`/api/session_ids`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) throw new Error(`获取会话列表失败: ${response.status}`);
+            
+            const jsonData = await response.json();
+            const dataArray = jsonData.split('\n\n');
+            
+            let _sessionIds = [];
+            let _questionList = [];
+            
+            dataArray.forEach(data => {
+                if (data && data !== "event: ping" && !isCanceling) {
+                    try {
+                        const difyObj = JSON.parse(data.replace('data:', ""));
+                        
+                        if (difyObj.event) {
+                            updateStatus(`状态: ${difyObj.event}`, 'loading');
+                        }
+                        
+                        if (difyObj.event === "workflow_finished" && difyObj.data && difyObj.data.outputs) {
+                            const outputs = difyObj.data.outputs;
+                            console.log('fetchSessionIdsAndQuestions outputs:', outputs);
+                            _sessionIds = outputs.result.map(item => item.session_id);
+                            _questionList = outputs.output;
+                        }
+                    } catch (e) {
+                        console.warn('解析响应失败:', e);
+                    }
+                }
+            });
+            
+            if (_sessionIds.length === 0) {
+                throw new Error('未获取到会话ID列表');
+            }
+            
+            return {_sessionIds, _questionList}
+        }
+
+        // 获取单个会话内容
+        async function fetchSingleSession(params) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            const requestBody = {
+                inputs: {
+                    session_id: params.session_id
+                },
+                response_mode: "streaming",
+                user: params.client_id,
+                token: token
+            };
+            
+            const response = await fetch(`/api/single_session`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) throw new Error(`获取会话内容失败: ${response.status}`);
+            
+            const jsonData = await response.json();
+            const dataArray = jsonData.split('\n\n');
+            
+            let sessionContent = null;
+            
+            dataArray.forEach(data => {
+                if (data && data !== "event: ping" && !isCanceling) {
+                    try {
+                        const difyObj = JSON.parse(data.replace('data:', ""));
+                        
+                        if (difyObj.event) {
+                            updateStatus(`状态: ${difyObj.event}`, 'loading');
+                        }
+                        
+                        if (difyObj.event === "workflow_finished" && difyObj.data && difyObj.data.outputs) {
+                            const outputs = difyObj.data.outputs;
+                            console.log('fetchSingleSession outputs:', outputs);
+                            sessionContent = outputs.result;
+                            sessionUuid = outputs.session_uuid;
+
+                        }
+                    } catch (e) {
+                        console.warn('解析响应失败:', e);
+                    }
+                }
+            });
+            
+            if (!sessionContent) {
+                throw new Error('未获取到会话内容');
+            }
+            
+            return {sessionContent, sessionUuid};
+        }
+
+        // 分析单个会话
+        async function analyzeSingleSession(params) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            const requestBody = {
+                inputs: {
+                    conversation_content: params.conversation_content,
+                    session_uuid: params.session_uuid,
+                    standard_question_list: params.standard_question_list
+                },
+                response_mode: "streaming",
+                user: params.client_id,
+                token: token
+            };
+
+            console.log('requestBody:', requestBody);
+            
+            const response = await fetch(`/api/session_analysis`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            if (!response.ok) throw new Error(`分析会话失败: ${response.status}`);
+            
+            const jsonData = await response.json();
+            const dataArray = jsonData.split('\n\n');
+            
+            let analysisResult = null;
+            
+            dataArray.forEach(data => {
+                if (data && data !== "event: ping" && !isCanceling) {
+                    try {
+                        const difyObj = JSON.parse(data.replace('data:', ""));
+                        
+                        if (difyObj.event) {
+                            updateStatus(`状态: ${difyObj.event}`, 'loading');
+                        }
+                        
+                        if (difyObj.event === "workflow_finished" && difyObj.data && difyObj.data.outputs) {
+                            // 解析输出数据
+                            const outputs = difyObj.data.outputs;
+                            console.log('analyzeSingleSession outputs:', outputs);
+                            analysisResult = parseOutputData(outputs);
+                        }
+                    } catch (e) {
+                        console.warn('解析响应失败:', e);
+                    }
+                }
+            });
+            
+            if (!analysisResult) {
+                throw new Error('未获取到分析结果');
+            }
+            
+            return analysisResult;
+        }
+
+        function parseOutputData(outputs) {
+            let results = [];
+            let outputString = outputs.output;
+            try {
+                // 解析 JSON 字符串
+                //针对Gemini需要替换掉```json*```
+                outputString = outputString.replace('```json','').replace('```','');
+                const parsedOutput = JSON.parse(outputString);
+                console.log('parsedOutput:', parsedOutput);
+
+                // 检查 parsedOutput 是否包含 sessionUrl 和 Intents
+                if (parsedOutput.sessionUuid && parsedOutput.Intents && Array.isArray(parsedOutput.Intents)) {
+                    // 遍历 Intents 数组
+                    parsedOutput.Intents.forEach(intent => {
+                        results.push({
+                            sessionUuid: parsedOutput.sessionUuid,
+                            customerSentence: intent.customerSentence || "N/A",
+                            standardQuestion: intent.standardQuestion || "N/A",
+                            newIssue: intent.newIssue,
+                            agentSentence: intent.agentSentence || "N/A"
+                        });
+                    });
+                } else {
+                    console.error("Invalid parsedOutput structure:", parsedOutput);
+                }
+            } catch (error) {
+                console.error("Error parsing JSON string:", error);
+            }
+    
+            return results;
+        }
+        
+        // 导出为CSV
+        function exportToCSV() {
+            const resultTable = document.getElementById("result-table");
+            const rows = resultTable.querySelectorAll("tr");
+            const csvContent = [];
+        
+            if (rows.length <= 1) {
+                document.getElementById("no-data-message").classList.remove("hidden");
+                setTimeout(() => {
+                    document.getElementById("no-data-message").classList.add("hidden");
+                }, 3000);
+                return;
+            }
+        
+            rows.forEach(row => {
+                const cells = Array.from(row.querySelectorAll("td, th")); // 将 NodeList 转换为数组
+                const rowContent = cells.map(cell => {
+                    // 检查单元格中是否包含 <a> 标签
+                    const link = cell.querySelector("a");
+                    let cellText;
+        
+                    if (link) {
+                        // 如果存在 <a> 标签，导出其 href 属性
+                        cellText = link.getAttribute("href");
+                    } else {
+                        // 否则，导出单元格的文本内容
+                        cellText = cell.textContent;
+                    }
+        
+                    // 转义双引号
+                    const escapedText = cellText.replace(/"/g, '""');
+                    return `"${escapedText}"`;
+                }).join(",");
+                csvContent.push(rowContent);
+            });
+        
+            const csvString = csvContent.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            if (link.download !== undefined) { // feature detection
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "session_analysis.csv");
+                link.style.visibility = "hidden";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+</body>
+</html>

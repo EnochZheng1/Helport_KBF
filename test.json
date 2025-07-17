@@ -1,0 +1,23 @@
+{
+  "indexing_technique": "high_quality",
+  "process_rule": {
+    "rules": {
+      "pre_processing_rules": [
+        {
+          "id": "remove_extra_spaces",
+          "enabled": true
+        },
+        {
+          "id": "remove_urls_emails",
+          "enabled": false
+        }
+      ],
+      "segmentation": {
+        "separator": "\n\n",
+        "max_tokens": 2000,
+        "chunk_overlap": 500
+      }
+    },
+    "mode": "custom"
+  }
+}
