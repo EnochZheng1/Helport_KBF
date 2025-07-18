@@ -4,10 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>问答生成</title>
+    <title data-translate-key="sidebar_qa_generation">问答生成</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script> <!-- 添加XLSX解析库 -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+
+    <script>
+        // Required for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
     <!-- 配置 Tailwind -->
     <script>
         tailwind.config = {
@@ -140,9 +148,9 @@
             <form id="qa-form">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div class="space-y-2">
-                        <label for="file-upload" data-translate-key="uploadLabel" class="block text-sm font-medium text-gray-700">上传 PDF 文件</label>
+                        <label for="file-upload" data-translate-key="uploadLabel" class="block text-sm font-medium text-gray-700">上传文件</label>
                         <div class="relative">
-                            <input type="file" id="file-upload" name="file-upload" accept=".pdf" multiple
+                            <input type="file" id="file-upload" name="file-upload" accept=".pdf,.docx,.mp4" multiple
                                 class="w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-secondary cursor-pointer">
                         </div>
                     </div>
@@ -196,7 +204,7 @@
                         </div>
                     </div>
 
-                    <div class="space-y-2">
+                    <!-- <div class="space-y-2">
                         <label data-translate-key="generationMethodLabel" class="block text-sm font-medium text-gray-700">Generation Method</label>
                         <div class="flex items-center space-x-4 pt-2">
                             <div class="flex items-center">
@@ -208,7 +216,7 @@
                                 <label for="method-chunk" data-translate-key="methodChunkLabel" class="ml-2 text-sm font-medium text-gray-700">By Chunk</label>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
                     <!-- 问题列表上传（仅任务类型a显示） -->
                     <div id="question-list-upload" class="space-y-2 hidden">
@@ -988,8 +996,8 @@
 
             // 验证是否上传了文件
             if (files.length === 0) {
-                updateStatus('请上传 PDF 文件', 'error');
-                showError('file-upload-error', '请上传 PDF 文件');
+                updateStatus('请上传文件', 'error');
+                showError('file-upload-error', '请上传文件');
                 return;
             }
 
@@ -1104,7 +1112,7 @@
         async function uploadFile(file, token, clientId){
             updateStatus(`正在上传文件: ${file.name}`, 'loading');
 
-            const uploadUrl = `/api/files/upload_pdf`;
+            const uploadUrl = `/api/files/upload-pdf`;
 
             const formData = new FormData();
             formData.append('file', file);
@@ -1157,7 +1165,7 @@
             const resultTable = document.getElementById("result-table");
             const resultTableBody = resultTable.querySelector("tbody");
             generationRequirements = document.getElementById("generation-requirements").value;
-            const selectedMethod = document.querySelector('input[name="generation-method"]:checked').value;
+            // const selectedMethod = document.querySelector('input[name="generation-method"]:checked').value;
             resultTableBody.innerHTML = "";
 
             // 验证是否选择了语言
@@ -1196,11 +1204,11 @@
                 }
             }
 
-            if (!selectedMethod) {
-                updateStatus('请选择生成方式', 'error');
-                showError('generation-method-error', '请选择生成方式');
-                return;
-            }
+            // if (!selectedMethod) {
+            //     updateStatus('请选择生成方式', 'error');
+            //     showError('generation-method-error', '请选择生成方式');
+            //     return;
+            // }
 
             // 显示取消按钮
             document.getElementById('cancel-button').classList.remove('hidden');

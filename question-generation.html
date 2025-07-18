@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate-key="pageTitle_question_gen">Question Generation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#2563eb',
+                        neutral: '#f3f4f6',
+                        accent: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .shadow-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            .table-header {
+                @apply px-6 py-4 text-left text-lg font-bold text-white uppercase tracking-wider bg-primary sticky top-0;
+            }
+            .table-cell {
+                @apply px-6 py-4 whitespace-normal break-words;
+            }
+            .status-box {
+                @apply bg-neutral p-4 rounded-lg border border-gray-200 mb-6 flex items-center;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-inter">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 transform transition-all duration-300 hover:shadow-lg">
+            <h1 data-translate-key="pageTitle_question_gen" class="text-2xl font-bold mb-6 text-gray-800">Common Scenarios Question Generation</h1>
+            <form id="question-gen-form" class="space-y-6">
+                
+                <div>
+                    <label for="role" data-translate-key="qg_roleLabel" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <textarea id="role" class="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[80px]" data-translate-key-placeholder="qg_rolePlaceholder" placeholder="e.g., A friendly and helpful customer service agent..."></textarea>
+                </div>
+
+                <div>
+                    <label for="categories" data-translate-key="qg_categoriesLabel" class="block text-sm font-medium text-gray-700 mb-1">Question Categories</label>
+                    <textarea id="categories" class="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px]" data-translate-key-placeholder="qg_categoriesPlaceholder" placeholder="e.g., Questions about product features, pricing plans..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="style" data-translate-key="qg_styleLabel" class="block text-sm font-medium text-gray-700 mb-1">Style (Optional)</label>
+                        <input type="text" id="style" class="w-full px-4 py-3 border border-gray-300 rounded-lg" data-translate-key-placeholder="qg_stylePlaceholder" placeholder="e.g., concise and direct">
+                    </div>
+                    <div>
+                        <label for="number" data-translate-key="qg_numberLabel" class="block text-sm font-medium text-gray-700 mb-1">Number of Questions</label>
+                        <input type="number" id="number" class="w-full px-4 py-3 border border-gray-300 rounded-lg" value="10">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t">
+                    <button type="button" id="generate-questions-btn" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span data-translate-key="qg_generateButton">Generate Questions</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="status" class="status-box hidden"></div>
+
+        <div id="results-container" class="bg-white rounded-xl shadow-md p-6 hidden">
+            <h2 data-translate-key="qg_resultsTitle" class="text-xl font-bold mb-4 text-gray-800">Generated Questions</h2>
+            <div class="overflow-x-auto max-h-[400px]">
+                <table id="result-table" class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th data-translate-key="tableHeaderIndex" class="table-header w-1/12">No.</th>
+                            <th data-translate-key="tableHeaderQuestion" class="table-header w-11/12">Question</th>
+                        </tr>
+                    </thead>
+                    <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const generateBtn = document.getElementById('generate-questions-btn');
+            const statusDiv = document.getElementById('status');
+            const resultsContainer = document.getElementById('results-container');
+            const resultTableBody = document.getElementById('result-table-body');
+
+            generateBtn.addEventListener('click', async () => {
+                const role = document.getElementById('role').value;
+                const categories = document.getElementById('categories').value;
+                const style = document.getElementById('style').value;
+                const number = parseInt(document.getElementById('number').value, 10);
+
+                if (!role || !categories || !number) {
+                    statusDiv.innerHTML = `<span>Please fill in all required fields.</span>`;
+                    statusDiv.className = 'status-box text-red-700 bg-red-100';
+                    statusDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                statusDiv.innerHTML = `<span><i class="fa-solid fa-spinner fa-spin mr-3"></i>Generating...</span>`;
+                statusDiv.className = 'status-box text-blue-700 bg-blue-100';
+                statusDiv.classList.remove('hidden');
+                resultsContainer.classList.add('hidden');
+                resultTableBody.innerHTML = ''; // Clear previous results
+                generateBtn.disabled = true;
+
+                const requestBody = {
+                    inputs: { role, generation_question_categories: categories, style, number_of_questions: number },
+                    user: "kbf-user"
+                };
+
+                try {
+                    const response = await fetch('/api/qa/generate_questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    // **UPDATED: Display results in the table**
+                    if (result.questions) {
+                        const questions = result.questions.split('\n').filter(q => q.trim() !== '');
+                        questions.forEach((question, index) => {
+                            const row = resultTableBody.insertRow();
+                            row.innerHTML = `
+                                <td class="table-cell text-center">${index + 1}</td>
+                                <td class="table-cell">${question}</td>
+                            `;
+                        });
+                        resultsContainer.classList.remove('hidden');
+                    }
+                    
+                    // **FIXED: Hide status on success**
+                    statusDiv.classList.add('hidden');
+
+                } catch (error) {
+                    console.error('Generation failed:', error);
+                    statusDiv.innerHTML = `<span><i class="fa-solid fa-exclamation-circle mr-3"></i>Error: ${error.message}</span>`;
+                    statusDiv.className = 'status-box text-red-700 bg-red-100';
+                } finally {
+                    // **FIXED: Re-enable button**
+                    generateBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

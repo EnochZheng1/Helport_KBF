@@ -6,6 +6,7 @@ const translations = {
     'pageTitle_main': { 'English': 'Knowledge Factory', 'Chinese Simplified': '知识库工厂' },
     'sidebar_qa_chunk': { 'English': 'Q&A Generation (By Chunk)', 'Chinese Simplified': '问答生成(按块)' },
     'sidebar_qa_page': { 'English': 'Q&A Generation (By Page)', 'Chinese Simplified': '问答生成(按页)' },
+    'sidebar_qa_generation': {'English':'Q&A Generation', 'Chinese Simplified':'问答生成'},
     'sidebar_session': { 'English': 'Session Analysis', 'Chinese Simplified': '会话分析' },
     'footer_text': { 'English': '© 2025 Knowledge Base Factory | An auxiliary tool for knowledge base generation', 'Chinese Simplified': '© 2025 知识库工厂 | 知识库辅助生成工具' },
 
@@ -14,7 +15,7 @@ const translations = {
     // -------------------------------------------------------------------
     'pageTitle_qa': { 'English': 'Q&A Generation', 'Chinese Simplified': '问答生成' },
     // 表单标签
-    'uploadLabel': { 'English': 'Upload PDF Files', 'Chinese Simplified': '上传 PDF 文件' },
+    'uploadLabel': { 'English': 'Upload Files', 'Chinese Simplified': '上传文件' },
     'docLangLabel': { 'English': 'Document Language', 'Chinese Simplified': '文档语言' },
     'langOptionEn': { 'English': 'English', 'Chinese Simplified': '英文' },
     'langOptionZh': { 'English': 'Chinese', 'Chinese Simplified': '中文' },
@@ -65,6 +66,19 @@ const translations = {
     'tableHeaderStandardQuestion': { 'English': 'Standard Question', 'Chinese Simplified': '标准问题' },
     'tableHeaderNewQuestion': { 'English': 'New Question', 'Chinese Simplified': '新问题' },
     'tableHeaderAgentResponse': { 'English': 'Agent Utterance', 'Chinese Simplified': '坐席语句' },
+
+    // 问题生成页面
+    'sidebar_question_gen': { 'English': 'Question Generation', 'Chinese Simplified': '常见问题生成' },
+    'pageTitle_question_gen': { 'English': 'Common Scenarios Question Generation', 'Chinese Simplified': '常见场景问题生成' },
+    'qg_roleLabel': { 'English': 'Role', 'Chinese Simplified': '角色' },
+    'qg_rolePlaceholder': { 'English': 'e.g., customer service agent, technical support', 'Chinese Simplified': '例如：客服、技术支持' },
+    'qg_categoriesLabel': { 'English': 'Question Categories', 'Chinese Simplified': '问题场景分类' },
+    'qg_categoriesPlaceholder': { 'English': 'e.g., questions about product features and pricing', 'Chinese Simplified': '例如：关于产品功能和价格的问题' },
+    'qg_styleLabel': { 'English': 'Style (Optional)', 'Chinese Simplified': '风格 (选填)' },
+    'qg_stylePlaceholder': { 'English': 'e.g., concise and direct', 'Chinese Simplified': '例如：简洁、直接' },
+    'qg_numberLabel': { 'English': 'Number of Questions', 'Chinese Simplified': '问题数量' },
+    'qg_generateButton': { 'English': 'Generate Questions', 'Chinese Simplified': '生成问题' },
+    'qg_resultsTitle': { 'English': 'Generated Questions', 'Chinese Simplified': '生成的问题' },
 
     // -------------------------------------------------------------------
     // 生成要求文本

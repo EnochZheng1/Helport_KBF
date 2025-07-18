@@ -221,8 +221,10 @@ const SA_CQL_API_KEY = "app-OhAcbxsrEQmSN3w3AFYxEK1V" //获取会话及问题列
 const SA_SCC_API_KEY = "app-D971pWeySqZ5a39JSF4M7rQq" //获取单个会话内容  
 const SA_SCS_API_KEY = "app-7RhFGtsT1qmSTa0rvvcTlXme"  //单个会话分析
 
+const QG_API_KEY = "app-zSuLa2u9e15gOubovCYgkVc2" //常见问题列表生成
+
 //问答生成：创建知识库上传pdf
-app.post('/api/files/upload_pdf', upload.single('file'), async (req, res) => {
+app.post('/api/files/upload-pdf', upload.single('file'), async (req, res) => {
     if (!req.file) {
       logWithTimestamp('WARN', '文件上传失败', { reason: '未提供文件' });
       return res.status(400).send('No file uploaded.');
@@ -467,6 +469,67 @@ app.post('/api/qa/query', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// 常见场景问题生成
+app.post('/api/qa/generate_questions', async (req, res) => {
+    const { role, generation_question_categories, style, number_of_question } = req.body.inputs || {};
+    const user = req.body.user;
+
+    logWithTimestamp('INFO', '--> [STAGE 1] Received request for /api/qa/generate_questions', { 
+        inputs: req.body.inputs 
+    });
+
+    if (!role || !generation_question_categories || !number_of_question) {
+        const errorMsg = 'Missing required fields';
+        logWithTimestamp('ERROR', `[STAGE 1] Validation failed: ${errorMsg}`, { inputs: req.body.inputs });
+        return res.status(400).json({ error: errorMsg });
+    }
+
+    const requestBody = {
+        inputs: { role, generation_question_categories, style: style || '', number_of_question },
+        response_mode: "blocking",
+        user: user || "default-user"
+    };
+
+    try {
+        logWithTimestamp('INFO', '--> [STAGE 2] Sending request to external AI service', { 
+            url: `${BASE_URL}/workflows/run`,
+            body: requestBody 
+        });
+
+        const response = await axios.post(`${BASE_URL}/workflows/run`, requestBody, {
+            headers: {
+                'Authorization': `Bearer ${QG_API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        logWithTimestamp('INFO', '<-- [STAGE 3] Received response from external AI service', { 
+            status: response.status 
+        });
+
+        const generatedText = response.data?.data?.outputs?.text;
+
+        if (generatedText) {
+            logWithTimestamp('INFO', '<-- [STAGE 4] Successfully extracted text, sending response.', { textLength: generatedText.length });
+            res.json({ questions: generatedText });
+        } else {
+            throw new Error("No questions were generated.");
+        }
+    } catch (error) {
+        logWithTimestamp('ERROR', '[STAGE X] An error occurred during question generation', { 
+            message: error.message 
+        });
+        if (error.response) {
+            logWithTimestamp('ERROR', 'External API Error Details', { 
+                status: error.response.status, 
+                data: error.response.data 
+            });
+        }
+        res.status(500).json({ error: 'Failed to generate questions due to an internal server error.' });
+    }
+});
+
 
 // 获取所有知识库
 app.get('/api/datasets', async (req, res) => {
