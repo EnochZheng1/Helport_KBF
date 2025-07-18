@@ -153,69 +153,69 @@
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label for="document-language" class="block text-sm font-medium text-gray-700">文档语言</label>
+                        <label for="document-language" data-translate-key="docLangLabel" class="block text-sm font-medium text-gray-700">文档语言</label>
                         <div class="select-wrapper">
                             <select id="document-language"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
-                                <option value="English">英文</option>
-                                <option value="Chinese Simplified">中文</option>
+                                <option value="English" data-translate-key="langOptionEn">英文</option>
+                                <option value="Chinese Simplified" data-translate-key="langOptionZh">中文</option>
                             </select>
                         </div>
                     </div>
                     <div class="space-y-2">
-                        <label for="client-id" class="block text-sm font-medium text-gray-700">租户选择</label>
+                        <label for="client-id" data-translate-key="tenantLabel" class="block text-sm font-medium text-gray-700">租户选择</label>
                         <div class="select-wrapper">
                             <select id="client-id"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
-                                <option value="">-- 请选择Client ID --</option>
+                                <option value="" data-translate-key="tenantPlaceholder">-- 请选择Client ID --</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <label for="business-select" class="block text-sm font-medium text-gray-700">业务选择</label>
+                        <label for="business-select" data-translate-key="bizLabel" class="block text-sm font-medium text-gray-700">业务选择</label>
                         <div class="select-wrapper">
                             <select id="business-select"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
-                                <option value="">-- 请选择业务 --</option>
+                                <option value="" data-translate-key="bizPlaceholder">-- 请选择业务 --</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="space-y-2">
-                        <label for="product-select" class="block text-sm font-medium text-gray-700">产品选择</label>
+                        <label for="product-select" data-translate-key="prodLabel" class="block text-sm font-medium text-gray-700">产品选择</label>
                         <div class="select-wrapper">
                             <select id="product-select"
                                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all appearance-none bg-white">
-                                <option value="">-- 请先选择业务 --</option>
+                                <option value="" data-translate-key="prodPlaceholder">-- 请先选择业务 --</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- 任务类型选择 -->
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">任务类型</label>
+                        <label data-translate-key="taskTypeLabel" class="block text-sm font-medium text-gray-700">任务类型</label>
                         <div class="flex items-center space-x-4">
                             <input type="checkbox" id="task-type-a" value="a"
                                 class="form-checkbox text-primary h-4 w-4">
-                            <label for="task-type-a" class="text-sm font-medium text-gray-700">根据问题找答案 (a)</label>
+                            <label for="task-type-a" data-translate-key="taskTypeA" class="text-sm font-medium text-gray-700">根据问题找答案 (a)</label>
                         </div>
                     </div>
 
                     <!-- 问题列表上传（仅任务类型a显示） -->
                     <div id="question-list-upload" class="space-y-2 hidden">
-                        <label for="question-file" class="block text-sm font-medium text-gray-700">上传问题列表
+                        <label for="question-file" data-translate-key="questionListLabel" class="block text-sm font-medium text-gray-700">上传问题列表
                             (xlsx单列)</label>
                         <input type="file" id="question-file" name="question-file" accept=".xlsx" multiple
                             class="w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-secondary cursor-pointer">
                     </div>
 
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">操作选项</label>
+                        <label data-translate-key="optionsLabel" class="block text-sm font-medium text-gray-700">操作选项</label>
                         <div class="flex items-center space-x-4">
                             <input type="checkbox" id="clear-history" value="true"
                                 class="form-checkbox text-primary h-4 w-4">
-                            <label for="clear-history" class="text-sm font-medium text-gray-700">
+                            <label for="clear-history" data-translate-key="clearHistoryLabel" class="text-sm font-medium text-gray-700">
                                 生成前清除历史问答
                             </label>
                         </div>
@@ -224,7 +224,7 @@
 
                 <!-- 新增：生成要求输入框（操作选项后） -->
                 <div id="requirements-box" class="requirements-box">
-                    <div class="requirements-title">问答生成要求</div>
+                    <div data-translate-key="reqTitle" class="requirements-title">问答生成要求</div>
                     <textarea id="generation-requirements" data-translate-key-placeholder="reqPlaceholder" class="requirements-textarea"
                         placeholder="请输入生成要求"></textarea>
                 </div>
@@ -238,7 +238,7 @@
                 <div class="flex flex-wrap gap-4">
                     <button type="button" id="create-button"
                         class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover hidden">
-                        <i class="fa-solid fa-database"></i> 创建知识库
+                        <i class="fa-solid fa-database"></i> <span data-translate-key="createKbButton">创建知识库</span>
                     </button>
 
                     <button type="button" id="generate-button"
@@ -247,15 +247,15 @@
                     </button>
                     <button type="button" id="cancel-button"
                         class="px-6 py-3 bg-warning text-white rounded-lg hover:bg-warning/90 transition-colors duration-300 flex items-center gap-2 shadow-hover hidden">
-                        <i class="fa-solid fa-stop"></i> 取消生成
+                        <i class="fa-solid fa-stop"></i> <span data-translate-key="cancelButton">取消生成</span>
                     </button>
                     <button type="button" id="query-button"
                         class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover">
-                        <i class="fa-solid fa-search"></i> 查询问答
+                        <i class="fa-solid fa-search"></i> <span data-translate-key="queryButton">查询问答</span>
                     </button>
                     <button type="button" id="export-csv-button"
                         class="px-6 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-300 flex items-center gap-2 shadow-hover">
-                        <i class="fa-solid fa-file-csv"></i> 导出为 CSV
+                        <i class="fa-solid fa-file-csv"></i> <span data-translate-key="exportButton">导出为 CSV</span>
                     </button>
                 </div>
             </form>
@@ -264,7 +264,7 @@
         <!-- 状态区域 -->
         <div id="status" class="bg-neutral p-4 rounded-lg border border-gray-200 mb-6 flex items-center">
             <i class="fa-solid fa-clock-o mr-3 text-gray-500"></i>
-            <span>等待操作...</span>
+            <span data-translate-key="statusWaiting">等待操作...</span>
         </div>
 
         <div id="result-table-container" class="bg-white rounded-xl shadow-md p-6 mb-6 overflow-hidden">
@@ -272,7 +272,7 @@
                 <table id="result-table" class="min-w-full divide-y divide-gray-200">
                     <thead>
                         <tr>
-                            <th class="table-header w-1/6">序号</th>
+                            <th data-translate-key="tableHeaderIndex" class="table-header w-1/6">序号</th>
                             <th data-translate-key="tableHeaderQuestion" class="table-header w-2/6">问题</th>
                             <th data-translate-key="tableHeaderAnswer" class="table-header w-3/6">答案</th>
                         </tr>
@@ -285,7 +285,7 @@
 
         <div id="no-data-message" class="hidden text-danger mt-4 flex items-center">
             <i class="fa-solid fa-exclamation-circle mr-2"></i>
-            <span>没有数据可供导出。</span>
+            <span data-translate-key="noDataToExport">没有数据可供导出。</span>
         </div>
     </div>
 

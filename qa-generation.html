@@ -196,6 +196,20 @@
                         </div>
                     </div>
 
+                    <div class="space-y-2">
+                        <label data-translate-key="generationMethodLabel" class="block text-sm font-medium text-gray-700">Generation Method</label>
+                        <div class="flex items-center space-x-4 pt-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="method-page" name="generation-method" value="page" class="form-radio text-primary h-4 w-4" checked>
+                                <label for="method-page" data-translate-key="methodPageLabel" class="ml-2 text-sm font-medium text-gray-700">By Page</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="method-chunk" name="generation-method" value="chunk" class="form-radio text-primary h-4 w-4">
+                                <label for="method-chunk" data-translate-key="methodChunkLabel" class="ml-2 text-sm font-medium text-gray-700">By Chunk</label>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 问题列表上传（仅任务类型a显示） -->
                     <div id="question-list-upload" class="space-y-2 hidden">
                         <label for="question-file" data-translate-key="questionListLabel" class="block text-sm font-medium text-gray-700">上传问题列表
@@ -1143,6 +1157,7 @@
             const resultTable = document.getElementById("result-table");
             const resultTableBody = resultTable.querySelector("tbody");
             generationRequirements = document.getElementById("generation-requirements").value;
+            const selectedMethod = document.querySelector('input[name="generation-method"]:checked').value;
             resultTableBody.innerHTML = "";
 
             // 验证是否选择了语言
@@ -1179,6 +1194,12 @@
                     showError('question-file-error', '请上传xlsx格式的问题列表文件');
                     return;
                 }
+            }
+
+            if (!selectedMethod) {
+                updateStatus('请选择生成方式', 'error');
+                showError('generation-method-error', '请选择生成方式');
+                return;
             }
 
             // 显示取消按钮
