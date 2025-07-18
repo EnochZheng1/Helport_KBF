@@ -146,7 +146,7 @@
             <form id="qa-form">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div class="space-y-2">
-                        <label for="file-upload" class="block text-sm font-medium text-gray-700">上传 PDF 文件</label>
+                        <label for="file-upload" data-translate-key="uploadLabel" class="block text-sm font-medium text-gray-700">上传 PDF 文件</label>
                         <div class="relative">
                             <input type="file" id="file-upload" name="file-upload" accept=".pdf" multiple
                                 class="w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-secondary cursor-pointer">
@@ -225,7 +225,7 @@
                 <!-- 新增：生成要求输入框（操作选项后） -->
                 <div id="requirements-box" class="requirements-box">
                     <div class="requirements-title">问答生成要求</div>
-                    <textarea id="generation-requirements" class="requirements-textarea"
+                    <textarea id="generation-requirements" data-translate-key-placeholder="reqPlaceholder" class="requirements-textarea"
                         placeholder="请输入生成要求"></textarea>
                 </div>
 
@@ -243,7 +243,7 @@
 
                     <button type="button" id="generate-button"
                         class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-secondary transition-colors duration-300 flex items-center gap-2 shadow-hover">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> 生成问答
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-translate-key="generateButton">生成问答</span>
                     </button>
                     <button type="button" id="cancel-button"
                         class="px-6 py-3 bg-warning text-white rounded-lg hover:bg-warning/90 transition-colors duration-300 flex items-center gap-2 shadow-hover hidden">
@@ -273,8 +273,8 @@
                     <thead>
                         <tr>
                             <th class="table-header w-1/6">序号</th>
-                            <th class="table-header w-2/6">问题</th>
-                            <th class="table-header w-3/6">答案</th>
+                            <th data-translate-key="tableHeaderQuestion" class="table-header w-2/6">问题</th>
+                            <th data-translate-key="tableHeaderAnswer" class="table-header w-3/6">答案</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">

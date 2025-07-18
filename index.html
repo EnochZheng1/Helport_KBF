@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>知识库工厂</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="language.js"></script> 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -147,6 +148,14 @@
             <h1 class="text-xl font-bold text-primary flex items-center">
                 <span>知识库工厂</span>
             </h1>
+        </div>
+        <div class="flex items-center">
+            <span class="mr-3 text-sm font-medium text-gray-900">English</span>
+            <label for="language-toggle" class="inline-flex relative items-center cursor-pointer">
+                <input type="checkbox" id="language-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+            <span class="ml-3 text-sm font-medium text-gray-900">中文</span>
         </div>
     </div>
     
